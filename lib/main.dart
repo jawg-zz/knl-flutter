@@ -379,9 +379,11 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _quick(String label, Color bg, Color fg, Future<void> Function() fn) {
+  Widget _quick(String label, Color bg, Color fg, void Function() fn) {
     return ElevatedButton(
-      onPressed: () => fn(),
+      onPressed: () {
+        fn();
+      },
       style: ElevatedButton.styleFrom(
         backgroundColor: bg,
         foregroundColor: fg,
