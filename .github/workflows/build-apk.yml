@@ -25,7 +25,7 @@ jobs:
           set -e
           flutter create --org com.kisii.church --project-name knlapp \
             --platforms android --android-language java /tmp/tmpl
-          test -f /tmp/tmpl/android/app/build.gradle || { ls -R /tmp/tmpl/android | head -20; exit 1; }
+          ls /tmp/tmpl/android/app/ | head
           cp lib/main.dart /tmp/tmpl/lib/main.dart
           cp pubspec.yaml /tmp/tmpl/pubspec.yaml
           mkdir -p /tmp/tmpl/assets && cp assets/* /tmp/tmpl/assets/
@@ -35,35 +35,51 @@ jobs:
           cp -r android-icons/. /tmp/tmpl/android/app/src/main/res/
           rm -rf /tmp/tmpl/test && mkdir -p /tmp/tmpl/test
           cp test/smoke_test.dart /tmp/tmpl/test/
-          sed -i 's/minSdkVersion [0-9][0-9]*/minSdkVersion 21/' \
-            /tmp/tmpl/android/app/build.gradle
-          grep -n 'minSdkVersion' /tmp/tmpl/android/app/build.gradle
+          sed -i 's/minSdk = [0-9][0-9]*/minSdk = 21/; s/minSdkVersion [0-9][0-9]*/minSdkVersion 21/' \
+            /tmp/tmpl/android/app/build.gradle.kts /tmp/tmpl/android/app/build.gradle 2>/dev/null || true
+          grep -n 'minSdk' /tmp/tmpl/android/app/build.gradle.kts /tmp/tmpl/android/app/build.gradle 2>/dev/null | head -4
           ls /tmp/tmpl/assets | wc -l
 
       - name: Native release signing (explicit signingConfigs)
         run: |
           set -e
           python3 - <<'EOF'
-          p = '/tmp/tmpl/android/app/build.gradle'
+          import glob
+          fs = glob.glob('/tmp/tmpl/android/app/build.gradle*')
+          print('gradle files:', fs)
+          p = '/tmp/tmpl/android/app/build.gradle.kts' if any(f.endswith('.kts') for f in fs) else '/tmp/tmpl/android/app/build.gradle'
           h = open(p).read()
-          block = '''    signingConfigs {
-              release {
-                  storeFile = file(System.getenv("KEYSTORE_PATH") ?: "keystore.jks")
-                  storePassword = System.getenv("KEYSTORE_PASSWORD")
-                  keyAlias = System.getenv("KEY_ALIAS")
-                  keyPassword = System.getenv("KEY_PASSWORD")
+          if p.endswith('.kts'):
+              block = '''    signingConfigs {
+                  create("release") {
+                      storeFile = file(System.getenv("KEYSTORE_PATH") ?: "keystore.jks")
+                      storePassword = System.getenv("KEYSTORE_PASSWORD")
+                      keyAlias = System.getenv("KEY_ALIAS")
+                      keyPassword = System.getenv("KEY_PASSWORD")
+                  }
               }
-          }
           '''
-          assert 'signingConfigs' not in h or 'signingConfigs.release' in h or True
-          if 'signingConfigs {\n        release' not in h:
+              assert 'buildTypes' in h, 'no buildTypes in ' + p
               h = h.replace('    buildTypes {', block + '    buildTypes {', 1)
-          h = h.replace('signingConfig = signingConfigs.debug',
-                        'signingConfig = signingConfigs.release')
+              assert 'getByName("debug")' in h, 'no debug signing ref in ' + p
+              h = h.replace('signingConfig = signingConfigs.getByName("debug")',
+                            'signingConfig = signingConfigs.getByName("release")')
+          else:
+              block = '''    signingConfigs {
+                  release {
+                      storeFile = file(System.getenv("KEYSTORE_PATH") ?: "keystore.jks")
+                      storePassword = System.getenv("KEYSTORE_PASSWORD")
+                      keyAlias = System.getenv("KEY_ALIAS")
+                      keyPassword = System.getenv("KEY_PASSWORD")
+                  }
+              }
+          '''
+              h = h.replace('    buildTypes {', block + '    buildTypes {', 1)
+              h = h.replace('signingConfig = signingConfigs.debug',
+                            'signingConfig = signingConfigs.release')
           open(p, 'w').write(h)
-          print('signing block wired')
+          print('signing wired in', p)
           EOF
-          grep -n 'signingConfigs.release' /tmp/tmpl/android/app/build.gradle | head -3
 
       - name: Quality gates
         run: |
