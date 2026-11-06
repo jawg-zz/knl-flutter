@@ -108,23 +108,22 @@ jobs:
           cd /tmp/tmpl
           BN=$((50 + $GITHUB_RUN_NUMBER))
           echo "versionCode=$BN"
-          flutter build apk --release --build-number=$BN
-          flutter build appbundle --release --build-number=$BN
+          flutter build apk --release --split-per-abi --obfuscate --split-debug-info=build/symbols --build-number=$BN
+          flutter build appbundle --release --obfuscate --split-debug-info=build/symbols --build-number=$BN
 
       - name: Verify signatures (gate v1+v2)
         run: |
           APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | head -1)
-          "$APKSIGNER" verify --print-certs \
-            /tmp/tmpl/build/app/outputs/flutter-apk/app-release.apk | head -2
-          V1=$("$APKSIGNER" verify -v \
-            /tmp/tmpl/build/app/outputs/flutter-apk/app-release.apk | grep -i 'v1 scheme')
-          V2=$("$APKSIGNER" verify -v \
-            /tmp/tmpl/build/app/outputs/flutter-apk/app-release.apk | grep -i 'v2 scheme')
+          APK=/tmp/tmpl/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          "$APKSIGNER" verify --print-certs "$APK" | head -2
+          V1=$("$APKSIGNER" verify -v "$APK" | grep -i 'v1 scheme')
+          V2=$("$APKSIGNER" verify -v "$APK" | grep -i 'v2 scheme')
           echo "$V1"; echo "$V2"
           echo "$V1" | grep -q 'true' || echo 'NOTE: v1 absent (AGP omits it; harmless on Android 7+)'
           echo "$V2" | grep -q 'true' || { echo 'GATE: v2 missing'; exit 1; }
-          cp /tmp/tmpl/build/app/outputs/flutter-apk/app-release.apk \
+          cp /tmp/tmpl/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk \
             /tmp/tmpl/knl-flutter-release.apk
+          ls -l /tmp/tmpl/knl-flutter-release.apk
           rm -f /tmp/tmpl/android/keystore.jks
 
       - uses: actions/upload-artifact@v4
@@ -136,3 +135,8 @@ jobs:
         with:
           name: knl-flutter-aab
           path: /tmp/tmpl/build/app/outputs/bundle/release/app-release.aab
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: knl-flutter-symbols
+          path: /tmp/tmpl/build/symbols
