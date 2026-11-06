@@ -72,7 +72,7 @@ jobs:
           APK=/tmp/tmpl/build/app/outputs/flutter-apk/app-release.apk
           zip -d "$APK" 'META-INF/*' > /dev/null
           "$APKSIGNER" sign --ks /tmp/knl.jks \
-            --ks-pass:env KEYSTORE_PASSWORD --key-pass:env KEY_PASSWORD \
+            --ks-pass env:KEYSTORE_PASSWORD --key-pass env:KEY_PASSWORD \
             --ks-key-alias "$KEY_ALIAS" --out /tmp/tmpl/knl-flutter-release.apk "$APK"
           "$APKSIGNER" verify --print-certs /tmp/tmpl/knl-flutter-release.apk | head -2
           rm -f /tmp/knl.jks
