@@ -13,6 +13,7 @@ import 'package:url_launcher/url_launcher.dart';
 const kNavy = Color(0xFF0A2A5C);
 const kNavy2 = Color(0xFF123A7A);
 const kGold = Color(0xFFC9A227);
+const kMuted = Color(0xFF5B6472);
 const kInk = Color(0xFF1E2430);
 const kNight = Color(0xFF0B1530);
 const kCream = Color(0xFFF3E6B8);
