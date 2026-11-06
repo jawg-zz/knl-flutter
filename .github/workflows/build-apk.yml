@@ -33,6 +33,8 @@ jobs:
           rm -rf /tmp/tmpl/android/app/src/main/res/mipmap-*
           cp -r android-icons/. /tmp/tmpl/android/app/src/main/res/
           rm -rf /tmp/tmpl/test
+          sed -i 's/minSdkVersion [0-9][0-9]*/minSdkVersion 21/' /tmp/tmpl/android/app/build.gradle
+          grep -n 'minSdkVersion' /tmp/tmpl/android/app/build.gradle
           grep -c "Kisii Newlife" /tmp/tmpl/lib/main.dart
           ls /tmp/tmpl/assets | wc -l
 
@@ -77,10 +79,14 @@ jobs:
             -signedjar /tmp/tmpl/knl-v1.apk "$APK" "$KEY_ALIAS"
           "$APKSIGNER" sign --ks /tmp/knl.jks \
             --ks-pass env:KEYSTORE_PASSWORD --key-pass env:KEY_PASSWORD \
-            --ks-key-alias "$KEY_ALIAS" --v1-signing-enabled false \
+            --ks-key-alias "$KEY_ALIAS" --v1-signing-enabled true \
             --v2-signing-enabled true --out /tmp/tmpl/knl-flutter-release.apk /tmp/tmpl/knl-v1.apk
           "$APKSIGNER" verify --print-certs /tmp/tmpl/knl-flutter-release.apk | head -2
-          "$APKSIGNER" verify -v /tmp/tmpl/knl-flutter-release.apk | grep -i "scheme" | head -4
+          V1=$("$APKSIGNER" verify -v /tmp/tmpl/knl-flutter-release.apk | grep -i 'v1 scheme')
+          V2=$("$APKSIGNER" verify -v /tmp/tmpl/knl-flutter-release.apk | grep -i 'v2 scheme')
+          echo "$V1"; echo "$V2"
+          echo "$V1" | grep -q 'true' || { echo 'GATE: v1 signature missing'; exit 1; }
+          echo "$V2" | grep -q 'true' || { echo 'GATE: v2 signature missing'; exit 1; }
           rm -f /tmp/knl.jks /tmp/tmpl/knl-v1.apk
 
       - uses: actions/upload-artifact@v4
