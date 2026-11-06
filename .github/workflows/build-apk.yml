@@ -57,7 +57,7 @@ jobs:
         run: |
           cd /tmp/tmpl
           flutter pub get
-          flutter build apk --release
+          flutter build apk --release --target-platform android-arm64
 
       - name: Re-sign with KNL release key
         env:
