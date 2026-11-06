@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 // ---------- brand + constants ----------
@@ -16,7 +17,7 @@ const kInk = Color(0xFF1E2430);
 const kNight = Color(0xFF0B1530);
 const kCream = Color(0xFFF3E6B8);
 
-const appVersion = '5.3';
+const appVersion = '5.4';
 const stkBase = 'https://knl-stk.spidmax.win';
 const telChurch = 'tel:+254737428240';
 const smsChurch = 'sms:+254737428240';
@@ -47,6 +48,17 @@ void toast(BuildContext ctx, String msg) {
 Future<void> copyText(BuildContext ctx, String text, String done) async {
   await Clipboard.setData(ClipboardData(text: text));
   if (ctx.mounted) toast(ctx, done);
+}
+
+Future<SharedPreferences> prefs() => SharedPreferences.getInstance();
+
+List<int> _intList(List<String> ss) {
+  final out = <int>[];
+  for (final s in ss) {
+    final n = int.tryParse(s);
+    if (n != null) out.add(n);
+  }
+  return out;
 }
 
 // ---------- models ----------
@@ -147,6 +159,22 @@ class _ShellState extends State<Shell> {
   void goTab(int i) => setState(() => _tab = i);
 
   @override
+  void initState() {
+    super.initState();
+    _maybeTour();
+  }
+
+  Future<void> _maybeTour() async {
+    final p = await prefs();
+    if ((p.getBool('knl_tour') ?? false) || !mounted) return;
+    await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const TourDialog());
+    await p.setBool('knl_tour', true);
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
@@ -192,6 +220,134 @@ class _ShellState extends State<Shell> {
               selectedIcon: Icon(Icons.handshake),
               label: 'Support'),
         ],
+      ),
+    );
+  }
+}
+
+class TourDialog extends StatefulWidget {
+  const TourDialog({super.key});
+  @override
+  State<TourDialog> createState() => _TourState();
+}
+
+class _TourState extends State<TourDialog> {
+  final _ctl = PageController();
+  int _i = 0;
+  static const _pages = [
+    [
+      'Karibu to KNL ✝',
+      'Kisii Newlife SDA in your pocket — service times, giving, hymns & directions. Works offline in church.'
+    ],
+    [
+      'Give in seconds',
+      'Tithes via Paybill 946085, or a prompt straight to your phone from the ♥ tab.'
+    ],
+    [
+      '695 hymns, fully offline',
+      'Every hymn with lyrics, no data needed — plus Sabbath times and the map to 8QH8+FP8.'
+    ],
+  ];
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: kNight,
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(22),
+          side: const BorderSide(color: kGold)),
+      content: SizedBox(
+        width: 320,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ClipOval(
+                child: Image.asset('assets/knl-logo.png',
+                    width: 76, height: 76)),
+            SizedBox(
+              height: 150,
+              child: PageView.builder(
+                controller: _ctl,
+                itemCount: _pages.length,
+                onPageChanged: (i) => setState(() => _i = i),
+                itemBuilder: (_, i) => Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 10),
+                    Text(_pages[i][0],
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                            color: kGold,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900)),
+                    const SizedBox(height: 6),
+                    Text(_pages[i][1],
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                            color: Colors.white, height: 1.6)),
+                  ],
+                ),
+              ),
+            ),
+            Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  for (var k = 0; k < _pages.length; k++)
+                    Container(
+                      margin: const EdgeInsets.all(4),
+                      width: 9,
+                      height: 9,
+                      decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: k == _i
+                              ? kGold
+                              : Colors.white30),
+                    ),
+                ]),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () =>
+                        Navigator.of(context).pop(),
+                    style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: const BorderSide(
+                            color: Colors.white54)),
+                    child: const Text('Skip'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () {
+                      if (_i < _pages.length - 1) {
+                        _ctl.nextPage(
+                            duration: const Duration(milliseconds: 250),
+                            curve: Curves.easeOut);
+                      } else {
+                        Navigator.of(context).pop();
+                      }
+                    },
+                    style: FilledButton.styleFrom(
+                        backgroundColor: kGold,
+                        foregroundColor:
+                            const Color(0xFF231A00)),
+                    child: Text(_i < _pages.length - 1
+                        ? 'Next ›'
+                        : 'Enter ✝'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -555,6 +711,8 @@ class _SongsState extends State<SongsScreen> {
   bool _sermons = false;
   final _q = TextEditingController();
   final _jump = TextEditingController();
+  final _note = TextEditingController();
+  List<String> _notes = [];
   int _sec = -1; // -1 all, -2 saved, -3 recent
   late Future<HymnData> _future;
   final Set<int> _favs = {};
@@ -564,13 +722,45 @@ class _SongsState extends State<SongsScreen> {
   void initState() {
     super.initState();
     _future = loadHymns();
+    prefs().then((p) {
+      if (!mounted) return;
+      setState(() {
+        _favs.addAll(_intList(p.getStringList('knl_favs') ?? []));
+        for (final n in _intList(p.getStringList('knl_recent') ?? [])) {
+          if (!_recent.contains(n)) _recent.add(n);
+        }
+      });
+    });
+    _loadNotes();
+  }
+
+  void _persistHymns() {
+    prefs().then((p) {
+      p.setStringList(
+          'knl_favs', _favs.map((e) => '$e').toList());
+      p.setStringList(
+          'knl_recent', _recent.map((e) => '$e').toList());
+    });
   }
 
   @override
   void dispose() {
     _q.dispose();
     _jump.dispose();
+    _note.dispose();
     super.dispose();
+  }
+
+  void _loadNotes() {
+    prefs().then((p) {
+      if (!mounted) return;
+      setState(
+          () => _notes = p.getStringList('knl_notes') ?? []);
+    });
+  }
+
+  void _saveNotes() {
+    prefs().then((p) => p.setStringList('knl_notes', _notes));
   }
 
   @override
@@ -609,22 +799,90 @@ class _SongsState extends State<SongsScreen> {
       [Icons.menu_book, 'Sabbath School • Sat 9 AM', 'Lesson study replay'],
       [Icons.bedtime, 'Vespers • Wed & Fri 5:30 PM', 'Midweek prayer replay'],
     ];
-    return ListView.builder(
+    return ListView(
       padding: const EdgeInsets.all(14),
-      itemCount: cards.length,
-      itemBuilder: (c, i) => Card.filled(
+      children: [
+        for (var i = 0; i < cards.length; i++)
+          _sermonCard(cards[i]),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('MY SERMON NOTES • THIS PHONE ONLY',
+                    style: Theme.of(context).textTheme.labelLarge),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _note,
+                  decoration: const InputDecoration(
+                    hintText: 'e.g. 8 Nov — faith of Daniel…',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton(
+                          onPressed: _addNote,
+                          child: const Text('Save note')),
+                    ),
+                  ],
+                ),
+                for (var k = 0; k < _notes.length; k++)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.note_alt_outlined,
+                        color: kNavy),
+                    title: Text(_notes[k]),
+                    trailing: IconButton(
+                      tooltip: 'Delete note',
+                      icon: const Icon(Icons.close),
+                      onPressed: () => setState(() {
+                        _notes.removeAt(k);
+                        _saveNotes();
+                      }),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _addNote() {
+    final t = _note.text.trim();
+    if (t.isEmpty) {
+      toast(context, 'Write a note first.');
+      return;
+    }
+    setState(() {
+      _notes.insert(
+          0, '${DateTime.now().toString().substring(0, 10)} — $t');
+      if (_notes.length > 30) _notes.removeLast();
+      _note.clear();
+      _saveNotes();
+    });
+  }
+
+  Widget _sermonCard(List card) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Card.filled(
         color: kNight,
         child: ListTile(
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           leading: CircleAvatar(
               backgroundColor: kGold,
-              child:
-                  Icon(cards[i][0] as IconData, color: kNight)),
-          title: Text(cards[i][1] as String,
+              child: Icon(card[0] as IconData, color: kNight)),
+          title: Text(card[1] as String,
               style: const TextStyle(
                   color: Colors.white, fontWeight: FontWeight.w800)),
-          subtitle: Text(cards[i][2] as String,
+          subtitle: Text(card[2] as String,
               style: const TextStyle(color: Colors.white70)),
           trailing: const Icon(Icons.play_arrow, color: kGold),
           onTap: () => openLink(ytChannel),
@@ -730,7 +988,7 @@ class _SongsState extends State<SongsScreen> {
             ),
             Expanded(
               child: pool.isEmpty
-                  ? const Center(child: Text('No matches.'))
+                  ? _emptyState()
                   : ListView.builder(
                       padding:
                           const EdgeInsets.fromLTRB(14, 4, 14, 14),
@@ -786,6 +1044,46 @@ class _SongsState extends State<SongsScreen> {
     );
   }
 
+  Widget _emptyState() {
+    final bool fav = _sec == -2;
+    final bool rec = _sec == -3;
+    final IconData ic =
+        fav ? Icons.star_outline : rec ? Icons.history : Icons.search_off;
+    final String title = fav
+        ? 'No saved hymns yet'
+        : rec
+            ? 'Nothing recent yet'
+            : 'No matches';
+    final String sub = fav
+        ? 'Tap ☆ inside any hymn to build your songbook.'
+        : rec
+            ? 'Hymns you open will appear here.'
+            : 'Try a title, a number 1–695, or a first line.';
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(ic, size: 48, color: kMuted),
+            const SizedBox(height: 10),
+            Text(title,
+                style: const TextStyle(
+                    fontWeight: FontWeight.w800, fontSize: 16)),
+            const SizedBox(height: 4),
+            Text(sub, textAlign: TextAlign.center),
+            if (fav || rec) ...[
+              const SizedBox(height: 12),
+              FilledButton.tonal(
+                  onPressed: () => setState(() => _sec = -1),
+                  child: const Text('Browse all hymns')),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   List<Hymn> _filter(HymnData data) {
     Iterable<Hymn> pool = data.hymns;
     if (_sec == -2) {
@@ -817,6 +1115,7 @@ class _SongsState extends State<SongsScreen> {
       _recent.insert(0, x.n);
       if (_recent.length > 20) _recent.removeLast();
     });
+    _persistHymns();
     Navigator.push(
         context,
         MaterialPageRoute(
@@ -835,6 +1134,7 @@ class _SongsState extends State<SongsScreen> {
     } else {
       _favs.add(n);
     }
+    _persistHymns();
   }
 }
 
@@ -1118,6 +1418,14 @@ class VisitScreen extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text('KNL Church • v$appVersion',
                       style: Theme.of(context).textTheme.bodySmall),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                      onPressed: () => showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (_) => const TourDialog()),
+                      icon: const Icon(Icons.replay),
+                      label: const Text('Replay welcome tour')),
                 ],
               ),
             ),
@@ -1173,6 +1481,32 @@ class _SupportState extends State<SupportScreen> {
   final List<Map<String, String>> _hist = [];
 
   static const _amounts = [20, 50, 100, 200, 500];
+
+  @override
+  void initState() {
+    super.initState();
+    prefs().then((p) {
+      if (!mounted) return;
+      setState(() {
+        _phone.text = p.getString('knl_phone') ?? '';
+        _hist.clear();
+        for (final s in p.getStringList('knl_hist') ?? <String>[]) {
+          final parts = s.split('|');
+          if (parts.length == 2) {
+            _hist.add({'a': parts[0], 'd': parts[1]});
+          }
+        }
+      });
+    });
+  }
+
+  void _persistSupport() {
+    prefs().then((p) {
+      p.setString('knl_phone', _phone.text);
+      p.setStringList('knl_hist',
+          _hist.map((x) => '${x['a']}|${x['d']}').toList());
+    });
+  }
 
   @override
   void dispose() {
@@ -1235,6 +1569,7 @@ class _SupportState extends State<SupportScreen> {
           'd': DateTime.now().toString().substring(0, 10)
         });
         if (_hist.length > 10) _hist.removeLast();
+        _persistSupport();
       } else if (d['demo'] == true) {
         setState(() {
           _msg = 'STK service is linking — please try again shortly.';
