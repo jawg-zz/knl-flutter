@@ -88,7 +88,8 @@ Future<HymnData> loadHymns() async {
   final d = json.decode(raw) as Map<String, dynamic>;
   final secs = <int, String>{};
   for (final s in (d['sections'] as List)) {
-    secs[(s as List)[0] as int] = (s as List)[1] as String;
+    final row = (s as List).toList();
+    secs[row[0] as int] = row[1] as String;
   }
   final hymns = ((d['hymns'] as List)
         ..sort((a, b) => (a['n'] as int).compareTo(b['n'] as int)))
@@ -256,8 +257,8 @@ class HomeScreen extends StatelessWidget {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    const Color(0x060E142E).withOpacity(0.15),
-                    const Color(0xFF06142E).withOpacity(0.88)
+                    const Color(0x060E142E).withValues(alpha: 0.15),
+                    const Color(0xFF06142E).withValues(alpha: 0.88)
                   ],
                 ),
               ),
@@ -1309,7 +1310,7 @@ class _SupportState extends State<SupportScreen> {
           decoration: BoxDecoration(
             color: kNight,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: kGold.withOpacity(0.5)),
+            border: Border.all(color: kGold.withValues(alpha: 0.5)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
