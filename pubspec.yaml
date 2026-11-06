@@ -1,0 +1,27 @@
+name: knlapp
+description: Kisii Newlife SDA Church app (Flutter native sibling).
+publish_to: none
+version: 5.0.0+50
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.0
+  url_launcher: ^6.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/hymns.json
+    - assets/announcements.json
+    - assets/knl-logo.png
+    - assets/icon-512.png
+    - assets/hero-aerial.webp
+    - assets/youth.webp

@@ -1,0 +1,65 @@
+name: build-apk
+on:
+  push:
+    branches: [master, main]
+  workflow_dispatch:
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Scaffold native shell, overlay our code
+        run: |
+          set -e
+          flutter create --org com.kisii.church --project-name knlapp \
+            --platforms android --android-language java /tmp/tmpl
+          cp lib/main.dart /tmp/tmpl/lib/main.dart
+          cp pubspec.yaml /tmp/tmpl/pubspec.yaml
+          mkdir -p /tmp/tmpl/assets && cp assets/* /tmp/tmpl/assets/
+          cp android-shell/AndroidManifest.xml \
+            /tmp/tmpl/android/app/src/main/AndroidManifest.xml
+          rm -rf /tmp/tmpl/android/app/src/main/res/mipmap-*
+          cp -r android-icons/. /tmp/tmpl/android/app/src/main/res/
+          rm -rf /tmp/tmpl/test
+          grep -c "Kisii Newlife" /tmp/tmpl/lib/main.dart
+          ls /tmp/tmpl/assets | wc -l
+
+      - name: Signing config
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -e
+          echo "$KEYSTORE_BASE64" | base64 -d > /tmp/tmpl/android/keystore.jks
+          cat > /tmp/tmpl/android/key.properties <<EOF
+          storePassword=$KEYSTORE_PASSWORD
+          keyPassword=$KEY_PASSWORD
+          keyAlias=$KEY_ALIAS
+          storeFile=/tmp/tmpl/android/keystore.jks
+          EOF
+          echo "keystore bytes: $(wc -c < /tmp/tmpl/android/keystore.jks)"
+
+      - name: Build release APK
+        run: |
+          cd /tmp/tmpl
+          flutter pub get
+          flutter build apk --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: knl-flutter-apk
+          path: /tmp/tmpl/build/app/outputs/flutter-apk/app-release.apk
