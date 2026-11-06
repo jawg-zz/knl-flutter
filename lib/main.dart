@@ -19,7 +19,7 @@ const kMuted = Color(0xFF5B6472);
 const kLine = Color(0xFFE3DCC8);
 const kNight = Color(0xFF0B1530);
 
-const appVersion = '5.0';
+const appVersion = '5.2';
 const stkBase = 'https://knl-stk.spidmax.win';
 const telChurch = 'tel:+254737428240';
 const smsChurch = 'sms:+254737428240';

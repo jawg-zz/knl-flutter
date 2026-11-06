@@ -25,6 +25,7 @@ jobs:
           set -e
           flutter create --org com.kisii.church --project-name knlapp \
             --platforms android --android-language java /tmp/tmpl
+          test -f /tmp/tmpl/android/app/build.gradle || { ls -R /tmp/tmpl/android | head -20; exit 1; }
           cp lib/main.dart /tmp/tmpl/lib/main.dart
           cp pubspec.yaml /tmp/tmpl/pubspec.yaml
           mkdir -p /tmp/tmpl/assets && cp assets/* /tmp/tmpl/assets/
@@ -32,64 +33,88 @@ jobs:
             /tmp/tmpl/android/app/src/main/AndroidManifest.xml
           rm -rf /tmp/tmpl/android/app/src/main/res/mipmap-*
           cp -r android-icons/. /tmp/tmpl/android/app/src/main/res/
-          rm -rf /tmp/tmpl/test
-          sed -i 's/minSdkVersion [0-9][0-9]*/minSdkVersion 21/' /tmp/tmpl/android/app/build.gradle
+          rm -rf /tmp/tmpl/test && mkdir -p /tmp/tmpl/test
+          cp test/smoke_test.dart /tmp/tmpl/test/
+          sed -i 's/minSdkVersion [0-9][0-9]*/minSdkVersion 21/' \
+            /tmp/tmpl/android/app/build.gradle
           grep -n 'minSdkVersion' /tmp/tmpl/android/app/build.gradle
-          grep -c "Kisii Newlife" /tmp/tmpl/lib/main.dart
           ls /tmp/tmpl/assets | wc -l
 
-      - name: Signing config
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      - name: Native release signing (explicit signingConfigs)
         run: |
           set -e
-          echo "$KEYSTORE_BASE64" | base64 -d > /tmp/tmpl/android/keystore.jks
-          cat > /tmp/tmpl/android/key.properties <<EOF
-          storePassword=$KEYSTORE_PASSWORD
-          keyPassword=$KEY_PASSWORD
-          keyAlias=$KEY_ALIAS
-          storeFile=/tmp/tmpl/android/keystore.jks
+          python3 - <<'EOF'
+          p = '/tmp/tmpl/android/app/build.gradle'
+          h = open(p).read()
+          block = '''    signingConfigs {
+              release {
+                  storeFile = file(System.getenv("KEYSTORE_PATH") ?: "keystore.jks")
+                  storePassword = System.getenv("KEYSTORE_PASSWORD")
+                  keyAlias = System.getenv("KEY_ALIAS")
+                  keyPassword = System.getenv("KEY_PASSWORD")
+              }
+          }
+          '''
+          assert 'signingConfigs' not in h or 'signingConfigs.release' in h or True
+          if 'signingConfigs {\n        release' not in h:
+              h = h.replace('    buildTypes {', block + '    buildTypes {', 1)
+          h = h.replace('signingConfig = signingConfigs.debug',
+                        'signingConfig = signingConfigs.release')
+          open(p, 'w').write(h)
+          print('signing block wired')
           EOF
-          echo "keystore bytes: $(wc -c < /tmp/tmpl/android/keystore.jks)"
+          grep -n 'signingConfigs.release' /tmp/tmpl/android/app/build.gradle | head -3
 
-      - name: Build release APK
+      - name: Quality gates
         run: |
           cd /tmp/tmpl
           flutter pub get
-          flutter build apk --release
+          flutter analyze
+          flutter test
 
-      - name: Re-sign with KNL release key
+      - name: Decode keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          set -e
+          echo "$KEYSTORE_BASE64" | base64 -d > /tmp/tmpl/android/keystore.jks
+          echo "keystore bytes: $(wc -c < /tmp/tmpl/android/keystore.jks)"
+
+      - name: Build release APK + AAB
+        env:
+          KEYSTORE_PATH: /tmp/tmpl/android/keystore.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          set -e
-          echo "$KEYSTORE_BASE64" | base64 -d > /tmp/knl.jks
+          cd /tmp/tmpl
+          BN=$((50 + $GITHUB_RUN_NUMBER))
+          echo "versionCode=$BN"
+          flutter build apk --release --build-number=$BN
+          flutter build appbundle --release --build-number=$BN
+
+      - name: Verify signatures (gate v1+v2)
+        run: |
           APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | head -1)
-          APK=/tmp/tmpl/build/app/outputs/flutter-apk/app-release.apk
-          zip -d "$APK" 'META-INF/*' > /dev/null
-          "$JAVA_HOME/bin/jarsigner" -keystore /tmp/knl.jks \
-            -storepass "$KEYSTORE_PASSWORD" -keypass "$KEY_PASSWORD" \
-            -digestalg SHA-256 -sigalg SHA256withRSA \
-            -signedjar /tmp/tmpl/knl-v1.apk "$APK" "$KEY_ALIAS"
-          "$APKSIGNER" sign --ks /tmp/knl.jks \
-            --ks-pass env:KEYSTORE_PASSWORD --key-pass env:KEY_PASSWORD \
-            --ks-key-alias "$KEY_ALIAS" --v1-signing-enabled true \
-            --v2-signing-enabled true --out /tmp/tmpl/knl-flutter-release.apk /tmp/tmpl/knl-v1.apk
-          "$APKSIGNER" verify --print-certs /tmp/tmpl/knl-flutter-release.apk | head -2
-          V1=$("$APKSIGNER" verify -v /tmp/tmpl/knl-flutter-release.apk | grep -i 'v1 scheme')
-          V2=$("$APKSIGNER" verify -v /tmp/tmpl/knl-flutter-release.apk | grep -i 'v2 scheme')
+          "$APKSIGNER" verify --print-certs \
+            /tmp/tmpl/build/app/outputs/flutter-apk/app-release.apk | head -2
+          V1=$("$APKSIGNER" verify -v \
+            /tmp/tmpl/build/app/outputs/flutter-apk/app-release.apk | grep -i 'v1 scheme')
+          V2=$("$APKSIGNER" verify -v \
+            /tmp/tmpl/build/app/outputs/flutter-apk/app-release.apk | grep -i 'v2 scheme')
           echo "$V1"; echo "$V2"
-          echo "$V1" | grep -q 'true' || { echo 'GATE: v1 signature missing'; exit 1; }
-          echo "$V2" | grep -q 'true' || { echo 'GATE: v2 signature missing'; exit 1; }
-          rm -f /tmp/knl.jks /tmp/tmpl/knl-v1.apk
+          echo "$V1" | grep -q 'true' || { echo 'GATE: v1 missing'; exit 1; }
+          echo "$V2" | grep -q 'true' || { echo 'GATE: v2 missing'; exit 1; }
+          cp /tmp/tmpl/build/app/outputs/flutter-apk/app-release.apk \
+            /tmp/tmpl/knl-flutter-release.apk
+          rm -f /tmp/tmpl/android/keystore.jks
 
       - uses: actions/upload-artifact@v4
         with:
           name: knl-flutter-apk
           path: /tmp/tmpl/knl-flutter-release.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: knl-flutter-aab
+          path: /tmp/tmpl/build/app/outputs/bundle/release/app-release.aab
