@@ -59,7 +59,25 @@ jobs:
           flutter pub get
           flutter build apk --release
 
+      - name: Re-sign with KNL release key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -e
+          echo "$KEYSTORE_BASE64" | base64 -d > /tmp/knl.jks
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | head -1)
+          APK=/tmp/tmpl/build/app/outputs/flutter-apk/app-release.apk
+          zip -d "$APK" 'META-INF/*' > /dev/null
+          "$APKSIGNER" sign --ks /tmp/knl.jks \
+            --ks-pass:env KEYSTORE_PASSWORD --key-pass:env KEY_PASSWORD \
+            --ks-key-alias "$KEY_ALIAS" --out /tmp/tmpl/knl-flutter-release.apk "$APK"
+          "$APKSIGNER" verify --print-certs /tmp/tmpl/knl-flutter-release.apk | head -2
+          rm -f /tmp/knl.jks
+
       - uses: actions/upload-artifact@v4
         with:
           name: knl-flutter-apk
-          path: /tmp/tmpl/build/app/outputs/flutter-apk/app-release.apk
+          path: /tmp/tmpl/knl-flutter-release.apk
