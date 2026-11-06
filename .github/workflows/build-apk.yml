@@ -57,7 +57,7 @@ jobs:
         run: |
           cd /tmp/tmpl
           flutter pub get
-          flutter build apk --release --target-platform android-arm64
+          flutter build apk --release
 
       - name: Re-sign with KNL release key
         env:
@@ -73,7 +73,8 @@ jobs:
           zip -d "$APK" 'META-INF/*' > /dev/null
           "$APKSIGNER" sign --ks /tmp/knl.jks \
             --ks-pass env:KEYSTORE_PASSWORD --key-pass env:KEY_PASSWORD \
-            --ks-key-alias "$KEY_ALIAS" --out /tmp/tmpl/knl-flutter-release.apk "$APK"
+            --ks-key-alias "$KEY_ALIAS" --v1-signing-enabled true \
+            --v2-signing-enabled true --out /tmp/tmpl/knl-flutter-release.apk "$APK"
           "$APKSIGNER" verify --print-certs /tmp/tmpl/knl-flutter-release.apk | head -2
           rm -f /tmp/knl.jks
 
