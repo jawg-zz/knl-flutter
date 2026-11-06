@@ -1,5 +1,5 @@
-// KNL Church — Kisii Newlife SDA (Flutter native sibling).
-// Single-file app: Home, Give, Songs (hymns+sermons), Family, Visit, Support.
+// KNL Church — Kisii Newlife SDA (Flutter native, Material 3).
+// Tabs: Home, Give, Songs (hymns+sermons), Family, Visit, Support.
 import 'dart:async';
 import 'dart:convert';
 
@@ -12,14 +12,11 @@ import 'package:url_launcher/url_launcher.dart';
 const kNavy = Color(0xFF0A2A5C);
 const kNavy2 = Color(0xFF123A7A);
 const kGold = Color(0xFFC9A227);
-const kBg = Color(0xFFF4EFE4);
-const kCard = Color(0xFFFFFDF8);
 const kInk = Color(0xFF1E2430);
-const kMuted = Color(0xFF5B6472);
-const kLine = Color(0xFFE3DCC8);
 const kNight = Color(0xFF0B1530);
+const kCream = Color(0xFFF3E6B8);
 
-const appVersion = '5.2';
+const appVersion = '5.3';
 const stkBase = 'https://knl-stk.spidmax.win';
 const telChurch = 'tel:+254737428240';
 const smsChurch = 'sms:+254737428240';
@@ -115,15 +112,24 @@ class KnlApp extends StatelessWidget {
   const KnlApp({super.key});
   @override
   Widget build(BuildContext context) {
+    final scheme = ColorScheme.fromSeed(seedColor: kNavy).copyWith(
+      secondary: kGold,
+      surface: const Color(0xFFF4EFE4),
+    );
     return MaterialApp(
       title: 'KNL Church',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        useMaterial3: false,
-        primaryColor: kNavy,
-        scaffoldBackgroundColor: kBg,
-        appBarTheme: const AppBarTheme(
-            backgroundColor: kNavy, foregroundColor: Colors.white),
+        useMaterial3: true,
+        colorScheme: scheme,
+        appBarTheme: AppBarTheme(
+          backgroundColor: scheme.primary,
+          foregroundColor: scheme.onPrimary,
+        ),
+        navigationBarTheme: NavigationBarThemeData(
+          backgroundColor: scheme.surface,
+          indicatorColor: kCream,
+        ),
       ),
       home: const Shell(),
     );
@@ -138,96 +144,54 @@ class Shell extends StatefulWidget {
 
 class _ShellState extends State<Shell> {
   int _tab = 0;
-  static const _titles = [
-    'KNL Church',
-    'Give',
-    'Songs',
-    'Family',
-    'Visit',
-    'Support'
-  ];
-  static const _pages = [
-    HomeScreen(),
-    GiveScreen(),
-    SongsScreen(),
-    FamilyScreen(),
-    VisitScreen(),
-    SupportScreen(),
-  ];
+  void goTab(int i) => setState(() => _tab = i);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: _tab == 0
-          ? null
-          : AppBar(title: Text(_titles[_tab]), backgroundColor: kNavy),
-      body: SafeArea(child: _pages[_tab]),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _tab,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: kNavy,
-        unselectedItemColor: kMuted,
-        selectedFontSize: 11,
-        unselectedFontSize: 10,
-        onTap: (i) => setState(() => _tab = i),
-        items: const [
-          BottomNavigationBarItem(icon: Text('🏠', style: TextStyle(fontSize: 22)), label: 'Home'),
-          BottomNavigationBarItem(icon: Text('💚', style: TextStyle(fontSize: 22)), label: 'Give'),
-          BottomNavigationBarItem(icon: Text('🎶', style: TextStyle(fontSize: 22)), label: 'Songs'),
-          BottomNavigationBarItem(icon: Text('🤝', style: TextStyle(fontSize: 22)), label: 'Family'),
-          BottomNavigationBarItem(icon: Text('📍', style: TextStyle(fontSize: 22)), label: 'Visit'),
-          BottomNavigationBarItem(icon: Text('♥', style: TextStyle(fontSize: 22, color: kGold)), label: 'Support'),
-        ],
-      ),
-    );
-  }
-
-  void goTab(int i) => setState(() => _tab = i);
-}
-
-// ---------- shared bits ----------
-class Eyebrow extends StatelessWidget {
-  final String text;
-  const Eyebrow(this.text, {super.key});
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
-      child: Text(text,
-          style: const TextStyle(
-              fontSize: 12,
-              letterSpacing: 1.2,
-              fontWeight: FontWeight.w800,
-              color: kMuted)),
-    );
-  }
-}
-
-class BigButton extends StatelessWidget {
-  final String label;
-  final Color bg;
-  final Color fg;
-  final Future<void> Function()? onTap;
-  const BigButton(
-      {super.key,
-      required this.label,
-      required this.bg,
-      required this.fg,
-      this.onTap});
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: onTap == null ? null : () => onTap!(),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: bg,
-          foregroundColor: fg,
-          minimumSize: const Size(0, 54),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      body: SafeArea(
+        top: _tab != 0,
+        child: IndexedStack(
+          index: _tab,
+          children: [
+            HomeScreen(onGo: goTab),
+            const GiveScreen(),
+            const SongsScreen(),
+            const FamilyScreen(),
+            const VisitScreen(),
+            const SupportScreen(),
+          ],
         ),
-        child: Text(label,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _tab,
+        onDestinationSelected: goTab,
+        destinations: const [
+          NavigationDestination(
+              icon: Icon(Icons.home_outlined),
+              selectedIcon: Icon(Icons.home),
+              label: 'Home'),
+          NavigationDestination(
+              icon: Icon(Icons.volunteer_activism_outlined),
+              selectedIcon: Icon(Icons.volunteer_activism),
+              label: 'Give'),
+          NavigationDestination(
+              icon: Icon(Icons.library_music_outlined),
+              selectedIcon: Icon(Icons.library_music),
+              label: 'Songs'),
+          NavigationDestination(
+              icon: Icon(Icons.diversity_3_outlined),
+              selectedIcon: Icon(Icons.diversity_3),
+              label: 'Family'),
+          NavigationDestination(
+              icon: Icon(Icons.church_outlined),
+              selectedIcon: Icon(Icons.church),
+              label: 'Visit'),
+          NavigationDestination(
+              icon: Icon(Icons.handshake_outlined),
+              selectedIcon: Icon(Icons.handshake),
+              label: 'Support'),
+        ],
       ),
     );
   }
@@ -235,210 +199,212 @@ class BigButton extends StatelessWidget {
 
 // ---------- HOME ----------
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  final void Function(int) onGo;
+  const HomeScreen({super.key, required this.onGo});
   @override
   Widget build(BuildContext context) {
-    final shell = context.findAncestorStateOfType<_ShellState>();
-    return ListView(
-      padding: EdgeInsets.zero,
-      children: [
-        Stack(
-          children: [
-            Image.asset('assets/hero-aerial.webp',
-                width: double.infinity,
-                height: 210,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) =>
-                    Container(height: 210, color: kNavy)),
-            Container(
-              height: 210,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    const Color(0x060E142E).withValues(alpha: 0.15),
-                    const Color(0xFF06142E).withValues(alpha: 0.88)
-                  ],
+    final scheme = Theme.of(context).colorScheme;
+    return CustomScrollView(
+      slivers: [
+        SliverAppBar(
+          expandedHeight: 230,
+          pinned: true,
+          backgroundColor: kNavy,
+          foregroundColor: Colors.white,
+          flexibleSpace: FlexibleSpaceBar(
+            title: const Text('Kisii Newlife SDA',
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+            titlePadding:
+                const EdgeInsetsDirectional.only(start: 88, bottom: 14),
+            background: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.asset('assets/hero-aerial.webp',
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) =>
+                        Container(color: kNavy)),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        const Color(0xFF06142E).withValues(alpha: 0.15),
+                        const Color(0xFF06142E).withValues(alpha: 0.9),
+                      ],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 16,
+                  bottom: 40,
+                  child: Row(
+                    children: [
+                      ClipOval(
+                          child: Image.asset('assets/knl-logo.png',
+                              width: 56, height: 56)),
+                      const SizedBox(width: 10),
+                      const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('KNL Church Community',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 14)),
+                          Text('Behind Quickmart, Kisii',
+                              style: TextStyle(
+                                  color: Colors.white70, fontSize: 12)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Positioned(
+                  left: 16,
+                  bottom: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 5),
+                    decoration: BoxDecoration(
+                        color: kGold,
+                        borderRadius: BorderRadius.circular(999)),
+                    child: Text(nextServiceChip(),
+                        style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF231A00))),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        SliverList(
+          delegate: SliverChildListDelegate([
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+              child: GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                childAspectRatio: 2.4,
+                children: [
+                  FilledButton.icon(
+                      onPressed: () => onGo(1),
+                      icon: const Icon(Icons.volunteer_activism),
+                      label: const Text('Give',
+                          style: TextStyle(fontWeight: FontWeight.w800))),
+                  FilledButton.tonalIcon(
+                      onPressed: () => openLink(mapsQuery),
+                      icon: const Icon(Icons.map),
+                      label: const Text('Directions',
+                          style: TextStyle(fontWeight: FontWeight.w800))),
+                  FilledButton.icon(
+                      onPressed: () => onGo(2),
+                      icon: const Icon(Icons.music_note),
+                      label: const Text('Songs',
+                          style: TextStyle(fontWeight: FontWeight.w800))),
+                  FilledButton.tonalIcon(
+                      onPressed: () => openLink(waChurch),
+                      icon: const Icon(Icons.chat),
+                      label: const Text('WhatsApp',
+                          style: TextStyle(fontWeight: FontWeight.w800))),
+                ],
+              ),
+            ),
+            const _Announcements(),
+            _eyebrow(context, 'GATHERINGS'),
+            _SvcCard(),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+              child: Card.filled(
+                color: kNavy,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () => onGo(5),
+                  child: const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Icon(Icons.favorite,
+                            color: kGold, size: 28),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Support the Developer',
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 16)),
+                              Text('Keep this app running & improving',
+                                  style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 12)),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.chevron_right, color: kGold),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
-            Positioned(
-              left: 16,
-              right: 16,
-              bottom: 14,
-              child: Row(
-                children: [
-                  ClipOval(
-                      child: Image.asset('assets/knl-logo.png',
-                          width: 60, height: 60)),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Kisii Newlife SDA',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.w900)),
-                        const Text('KNL Church Community • Behind Quickmart, Kisii',
-                            style: TextStyle(
-                                color: Colors.white70, fontSize: 12)),
-                        const SizedBox(height: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 5),
-                          decoration: BoxDecoration(
-                              color: kGold,
-                              borderRadius: BorderRadius.circular(999)),
-                          child: Text(nextServiceChip(),
-                              style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w800,
-                                  color: Color(0xFF231A00))),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+            Padding(
+              padding: const EdgeInsets.all(18),
+              child: Center(
+                  child: Text(
+                      'Kisii Newlife SDA (KNL) • knlsda.org • v$appVersion',
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(color: scheme.onSurfaceVariant))),
             ),
-          ],
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
-          child: GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 10,
-            crossAxisSpacing: 10,
-            childAspectRatio: 2.6,
-            children: [
-              _quick('💚 Give', kNavy, Colors.white,
-                  () => shell?.goTab(1)),
-              _quick('🗺️ Directions', kGold, const Color(0xFF231A00),
-                  () => openLink(mapsQuery)),
-              _quick('🎵 Songs', kNavy, Colors.white,
-                  () => shell?.goTab(2)),
-              _quick('💬 WhatsApp', const Color(0xFF1FA855), Colors.white,
-                  () => openLink(waChurch)),
-            ],
-          ),
-        ),
-        const _Announcements(),
-        const Eyebrow('GATHERINGS'),
-        const _Card(child: _SvcRows()),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
-          child: InkWell(
-            onTap: () => shell?.goTab(5),
-            borderRadius: BorderRadius.circular(16),
-            child: Ink(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                    colors: [kNavy, kNavy2],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Row(
-                children: [
-                  Text('♥', style: TextStyle(fontSize: 26, color: kGold)),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Support the Developer',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 16)),
-                        Text('Keep this app running & improving',
-                            style: TextStyle(
-                                color: Colors.white70, fontSize: 12)),
-                      ],
-                    ),
-                  ),
-                  Text('›',
-                      style: TextStyle(color: kGold, fontSize: 24)),
-                ],
-              ),
-            ),
-          ),
-        ),
-        const Padding(
-          padding: EdgeInsets.all(18),
-          child: Center(
-              child: Text('Kisii Newlife SDA (KNL) • knlsda.org • v$appVersion',
-                  style: TextStyle(fontSize: 12, color: kMuted))),
+          ]),
         ),
       ],
     );
   }
-
-  Widget _quick(String label, Color bg, Color fg, void Function() fn) {
-    return ElevatedButton(
-      onPressed: () {
-        fn();
-      },
-      style: ElevatedButton.styleFrom(
-        backgroundColor: bg,
-        foregroundColor: fg,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      ),
-      child: Text(label,
-          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
-    );
-  }
 }
 
-class _Card extends StatelessWidget {
-  final Widget child;
-  const _Card({required this.child});
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 14),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: kCard,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: kLine),
-      ),
-      child: child,
-    );
-  }
+Widget _eyebrow(BuildContext context, String text) {
+  return Padding(
+    padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
+    child: Text(text, style: Theme.of(context).textTheme.labelLarge?.copyWith(
+        letterSpacing: 1.2, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+  );
 }
 
-class _SvcRows extends StatelessWidget {
-  const _SvcRows();
+class _SvcCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const rows = [
-      ['🙏 Wednesday Prayers', 'Wed 5:30 PM'],
-      ['🕯️ Friday Vespers', 'Fri 5:30 PM'],
-      ['⛪ Sabbath Service', 'Sat 9:00 AM'],
+      ['Wednesday Prayers', 'Wed 5:30 PM', Icons.nights_stay_outlined],
+      ['Friday Vespers', 'Fri 5:30 PM', Icons.bedtime_outlined],
+      ['Sabbath Service', 'Sat 9:00 AM', Icons.church_outlined],
     ];
-    return Column(
-      children: rows
-          .map((r) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(r[0],
-                        style: const TextStyle(fontWeight: FontWeight.w700)),
-                    Text(r[1],
-                        style: const TextStyle(
-                            color: kNavy, fontWeight: FontWeight.w800)),
-                  ],
-                ),
-              ))
-          .toList(),
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 14),
+      child: Column(
+        children: rows
+            .map((r) => ListTile(
+                  leading: Icon(r[2] as IconData, color: kNavy),
+                  title: Text(r[0] as String,
+                      style:
+                          const TextStyle(fontWeight: FontWeight.w700)),
+                  trailing: Text(r[1] as String,
+                      style: const TextStyle(
+                          color: kNavy,
+                          fontWeight: FontWeight.w800,
+                          fontFeatures: [FontFeature.tabularFigures()])),
+                ))
+            .toList(),
+      ),
     );
   }
 }
@@ -461,33 +427,22 @@ class _Announcements extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Eyebrow('ANNOUNCEMENTS'),
-            _Card(
+            _eyebrow(context, 'ANNOUNCEMENTS'),
+            Card(
+              margin: const EdgeInsets.symmetric(horizontal: 14),
               child: Column(
                 children: (items).map<Widget>((a) {
                   final m = a as Map<String, dynamic>;
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                            child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('${m['title'] ?? ''}',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w800)),
-                            Text('${m['body'] ?? ''}',
-                                style: const TextStyle(
-                                    fontSize: 13, color: kMuted)),
-                          ],
-                        )),
-                        Text('${m['date'] ?? ''}',
-                            style: const TextStyle(
-                                color: kNavy, fontWeight: FontWeight.w800)),
-                      ],
-                    ),
+                  return ListTile(
+                    leading: const Icon(Icons.campaign_outlined,
+                        color: kGold),
+                    title: Text('${m['title'] ?? ''}',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w800)),
+                    subtitle: Text('${m['body'] ?? ''}'),
+                    trailing: Text('${m['date'] ?? ''}',
+                        style: const TextStyle(
+                            color: kNavy, fontWeight: FontWeight.w800)),
                   );
                 }).toList(),
               ),
@@ -504,80 +459,86 @@ class GiveScreen extends StatelessWidget {
   const GiveScreen({super.key});
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      children: [
-        const Eyebrow('M-PESA GIVING • OFFICIAL PAYBILLS'),
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 14),
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-              color: kNight, borderRadius: BorderRadius.circular(20)),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _paybill(context, 'TITHES & OFFERINGS', '946085',
-                  'Account: Tithes / Offerings', true),
-              _paybill(context, 'DEVELOPMENT', '921058',
-                  'Account: Home-Church / Visitor', false),
-              const Text('How to pay',
-                  style: TextStyle(
-                      color: kGold,
-                      fontSize: 12,
-                      letterSpacing: 1,
-                      fontWeight: FontWeight.w800)),
-              const SizedBox(height: 6),
-              const Text(
-                  '1. M-Pesa → Lipa na M-Pesa → Paybill\n2. Business no: 946085 or 921058\n3. Account: Tithes / Offering / Home-Church\n4. Amount → PIN → Send ✓',
-                  style: TextStyle(color: Colors.white, height: 1.8)),
-            ],
+    return Scaffold(
+      appBar: AppBar(title: const Text('Give')),
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      body: ListView(
+        padding: const EdgeInsets.all(14),
+        children: [
+          Card.filled(
+            color: kNight,
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('M-PESA GIVING • OFFICIAL PAYBILLS',
+                      style: Theme.of(context)
+                          .textTheme
+                          .labelLarge
+                          ?.copyWith(color: kGold, letterSpacing: 1)),
+                  const SizedBox(height: 12),
+                  _paybill(context, 'TITHES & OFFERINGS', '946085',
+                      'Account: Tithes / Offerings', true),
+                  _paybill(context, 'DEVELOPMENT', '921058',
+                      'Account: Home-Church / Visitor', false),
+                  Text('How to pay',
+                      style: Theme.of(context)
+                          .textTheme
+                          .labelLarge
+                          ?.copyWith(color: kGold, letterSpacing: 1)),
+                  const SizedBox(height: 6),
+                  const Text(
+                      '1. M-Pesa → Lipa na M-Pesa → Paybill\n2. Business no: 946085 or 921058\n3. Account: Tithes / Offering / Home-Church\n4. Amount → PIN → Send ✓',
+                      style: TextStyle(color: Colors.white, height: 1.8)),
+                ],
+              ),
+            ),
           ),
-        ),
-        const SizedBox(height: 24),
-      ],
+        ],
+      ),
     );
   }
 
   Widget _paybill(BuildContext ctx, String label, String num, String acc,
       bool green) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.white24),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        children: [
-          Text(label,
-              style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                  letterSpacing: 1,
-                  fontWeight: FontWeight.w800)),
-          Text(num,
-              style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 2,
-                  color: green ? const Color(0xFF8CE76A) : kGold)),
-          Text(acc, style: const TextStyle(color: Colors.white70)),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
+    return Card.outlined(
+      color: Colors.transparent,
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: Colors.white24)),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          children: [
+            Text(label,
+                style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                    letterSpacing: 1,
+                    fontWeight: FontWeight.w800)),
+            SelectableText(num,
+                style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 2,
+                    color: green ? const Color(0xFF8CE76A) : kGold)),
+            Text(acc, style: const TextStyle(color: Colors.white70)),
+            const SizedBox(height: 10),
+            FilledButton.icon(
               onPressed: () => copyText(ctx, num, '✓ $num copied'),
-              style: ElevatedButton.styleFrom(
+              icon: const Icon(Icons.copy, size: 18),
+              label: const Text('Copy Paybill'),
+              style: FilledButton.styleFrom(
                 backgroundColor:
                     green ? const Color(0xFF43B02A) : kGold,
                 foregroundColor:
                     green ? Colors.white : const Color(0xFF231A00),
-                minimumSize: const Size(0, 48),
+                minimumSize: const Size(double.infinity, 48),
               ),
-              child: const Text('Copy Paybill',
-                  style: TextStyle(fontWeight: FontWeight.w800)),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -614,79 +575,61 @@ class _SongsState extends State<SongsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          margin: const EdgeInsets.fromLTRB(14, 14, 14, 0),
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-              color: const Color(0xFFE7E0CC),
-              borderRadius: BorderRadius.circular(12)),
-          child: Row(
-            children: [
-              _seg('🎵 Hymns', !_sermons,
-                  () => setState(() => _sermons = false)),
-              _seg('▶️ Sermons', _sermons,
-                  () => setState(() => _sermons = true)),
-            ],
+    return Scaffold(
+      appBar: AppBar(title: const Text('Songs')),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+            child: SegmentedButton<bool>(
+              segments: const [
+                ButtonSegment(
+                    value: false,
+                    icon: Icon(Icons.music_note),
+                    label: Text('Hymns')),
+                ButtonSegment(
+                    value: true,
+                    icon: Icon(Icons.play_circle),
+                    label: Text('Sermons')),
+              ],
+              selected: {_sermons},
+              onSelectionChanged: (s) =>
+                  setState(() => _sermons = s.first),
+            ),
           ),
-        ),
-        Expanded(child: _sermons ? _sermonList() : _hymnBrowser()),
-      ],
-    );
-  }
-
-  Widget _seg(String label, bool on, VoidCallback fn) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: fn,
-        child: Container(
-          alignment: Alignment.center,
-          height: 48,
-          decoration: BoxDecoration(
-            color: on ? kCard : Colors.transparent,
-            borderRadius: BorderRadius.circular(9),
-          ),
-          child: Text(label,
-              style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  color: on ? kNavy : kMuted)),
-        ),
+          Expanded(child: _sermons ? _sermonList() : _hymnBrowser()),
+        ],
       ),
     );
   }
 
   Widget _sermonList() {
     const cards = [
-      ['▶', 'Divine Service • Sat 11 AM', 'Full worship replay'],
-      ['📖', 'Sabbath School • Sat 9 AM', 'Lesson study replay'],
-      ['🕯️', 'Vespers • Wed & Fri 5:30 PM', 'Midweek prayer replay'],
+      [Icons.church, 'Divine Service • Sat 11 AM', 'Full worship replay'],
+      [Icons.menu_book, 'Sabbath School • Sat 9 AM', 'Lesson study replay'],
+      [Icons.bedtime, 'Vespers • Wed & Fri 5:30 PM', 'Midweek prayer replay'],
     ];
-    return ListView(
+    return ListView.builder(
       padding: const EdgeInsets.all(14),
-      children: cards
-          .map((c) => Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                child: ListTile(
-                  tileColor: kNight,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
-                  leading: CircleAvatar(
-                      backgroundColor: kGold,
-                      child: Text(c[0],
-                          style: const TextStyle(fontSize: 20))),
-                  title: Text(c[1],
-                      style: const TextStyle(
-                          color: Colors.white, fontWeight: FontWeight.w800)),
-                  subtitle: Text(c[2],
-                      style: const TextStyle(color: Colors.white70)),
-                  trailing: const Text('Watch ›',
-                      style: TextStyle(
-                          color: kGold, fontWeight: FontWeight.w800)),
-                  onTap: () => openLink(ytChannel),
-                ),
-              ))
-          .toList(),
+      itemCount: cards.length,
+      itemBuilder: (c, i) => Card.filled(
+        color: kNight,
+        child: ListTile(
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          leading: CircleAvatar(
+              backgroundColor: kGold,
+              child:
+                  Icon(cards[i][0] as IconData, color: kNight)),
+          title: Text(cards[i][1] as String,
+              style: const TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.w800)),
+          subtitle: Text(cards[i][2] as String,
+              style: const TextStyle(color: Colors.white70)),
+          trailing: const Icon(Icons.play_arrow, color: kGold),
+          onTap: () => openLink(ytChannel),
+        ),
+      ),
     );
   }
 
@@ -694,14 +637,15 @@ class _SongsState extends State<SongsScreen> {
     return FutureBuilder<HymnData>(
       future: _future,
       builder: (ctx, snap) {
-        if (snap.hasError) {
+        if (snap.hasError || (snap.connectionState == ConnectionState.done &&
+            !snap.hasData)) {
           return Center(
               child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text('Could not load hymnal.'),
               const SizedBox(height: 8),
-              ElevatedButton(
+              FilledButton(
                   onPressed: () =>
                       setState(() => _future = loadHymns()),
                   child: const Text('Retry')),
@@ -720,14 +664,10 @@ class _SongsState extends State<SongsScreen> {
               child: Row(
                 children: [
                   Expanded(
-                    child: TextField(
+                    child: SearchBar(
                       controller: _q,
-                      decoration: const InputDecoration(
-                        hintText: 'Title, №, first line…',
-                        border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 12),
-                      ),
+                      hintText: 'Title, №, first line…',
+                      leading: const Icon(Icons.search),
                       onChanged: (_) => setState(() {}),
                     ),
                   ),
@@ -748,7 +688,7 @@ class _SongsState extends State<SongsScreen> {
                   const SizedBox(width: 8),
                   SizedBox(
                     height: 48,
-                    child: ElevatedButton(
+                    child: FilledButton(
                       onPressed: () {
                         final n = int.tryParse(_jump.text);
                         if (n == null) return;
@@ -757,9 +697,6 @@ class _SongsState extends State<SongsScreen> {
                             .toList();
                         if (hit.isNotEmpty) _open(hit.first, data);
                       },
-                      style: ElevatedButton.styleFrom(
-                          backgroundColor: kNavy,
-                          foregroundColor: Colors.white),
                       child: const Text('Go',
                           style: TextStyle(fontWeight: FontWeight.w800)),
                     ),
@@ -783,36 +720,35 @@ class _SongsState extends State<SongsScreen> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text('${pool.length} hymns',
-                    style:
-                        const TextStyle(fontSize: 12, color: kMuted)),
+                    style: Theme.of(context).textTheme.bodySmall),
               ),
             ),
             Expanded(
               child: pool.isEmpty
                   ? const Center(child: Text('No matches.'))
                   : ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(14, 4, 14, 14),
+                      padding:
+                          const EdgeInsets.fromLTRB(14, 4, 14, 14),
                       itemCount: pool.length > 150 ? 150 : pool.length,
                       itemBuilder: (c, i) {
                         final x = pool[i];
                         return Card(
                           child: ListTile(
                             minVerticalPadding: 10,
-                            leading: Container(
-                              width: 52,
-                              alignment: Alignment.center,
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              decoration: BoxDecoration(
-                                  color: kNavy,
-                                  borderRadius: BorderRadius.circular(8)),
+                            leading: CircleAvatar(
+                              backgroundColor: kNavy,
+                              foregroundColor: Colors.white,
                               child: Text('${x.n}',
                                   style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w900)),
+                                      fontWeight: FontWeight.w900,
+                                      fontFeatures: [
+                                        FontFeature.tabularFigures()
+                                      ])),
                             ),
                             title: Text(x.t,
                                 maxLines: 1,
@@ -821,11 +757,12 @@ class _SongsState extends State<SongsScreen> {
                                     fontWeight: FontWeight.w700)),
                             subtitle: Text(
                                 '${data.sections[x.s] ?? ''} • ${x.v.length}v${(x.r != null || x.r2 != null) ? ' • refrain' : ''}',
-                                style: const TextStyle(fontSize: 12)),
-                            trailing: Text(
-                                _favs.contains(x.n) ? '★' : '',
-                                style: const TextStyle(
-                                    color: kGold, fontSize: 20)),
+                                style:
+                                    const TextStyle(fontSize: 12)),
+                            trailing: _favs.contains(x.n)
+                                ? const Icon(Icons.star,
+                                    color: kGold)
+                                : null,
                             onTap: () => _open(x, data),
                           ),
                         );
@@ -839,16 +776,12 @@ class _SongsState extends State<SongsScreen> {
   }
 
   Widget _chip(String label, int id) {
-    final on = _sec == id;
     return Container(
       margin: const EdgeInsets.only(right: 8),
       child: ChoiceChip(
         label: Text(label),
-        selected: on,
+        selected: _sec == id,
         onSelected: (_) => setState(() => _sec = id),
-        selectedColor: kNavy,
-        labelStyle: TextStyle(
-            color: on ? Colors.white : kNavy, fontWeight: FontWeight.w700),
       ),
     );
   }
@@ -858,7 +791,9 @@ class _SongsState extends State<SongsScreen> {
     if (_sec == -2) {
       pool = pool.where((h) => _favs.contains(h.n));
     } else if (_sec == -3) {
-      final order = {for (var i = 0; i < _recent.length; i++) _recent[i]: i};
+      final order = {
+        for (var i = 0; i < _recent.length; i++) _recent[i]: i
+      };
       final list =
           pool.where((h) => order.containsKey(h.n)).toList();
       list.sort((a, b) => order[a.n]!.compareTo(order[b.n]!));
@@ -931,7 +866,8 @@ class _ReaderState extends State<ReaderScreen> {
 
   void _step(int d) {
     final i = widget.all.indexWhere((h) => h.n == _h.n);
-    final n = widget.all[(i + d + widget.all.length) % widget.all.length];
+    final n =
+        widget.all[(i + d + widget.all.length) % widget.all.length];
     setState(() => _h = n);
   }
 
@@ -951,8 +887,8 @@ class _ReaderState extends State<ReaderScreen> {
             maxLines: 1, overflow: TextOverflow.ellipsis),
         actions: [
           IconButton(
-            icon: Text(widget.fav ? '★' : '☆',
-                style: const TextStyle(fontSize: 24, color: kGold)),
+            icon: Icon(widget.fav ? Icons.star : Icons.star_outline,
+                color: kGold),
             onPressed: () {
               widget.onFav();
               setState(() {});
@@ -966,38 +902,34 @@ class _ReaderState extends State<ReaderScreen> {
           Center(
               child: Text(
                   '${widget.secName} • ${_h.v.length} verses${(_h.r != null || _h.r2 != null) ? ' • refrain' : ''}',
-                  style: const TextStyle(
-                      fontSize: 12,
-                      letterSpacing: 1,
-                      color: kMuted,
-                      fontWeight: FontWeight.w800))),
+                  style: Theme.of(context).textTheme.labelLarge)),
           const SizedBox(height: 12),
           ...blocks,
         ],
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
           child: Row(
             children: [
-              Expanded(
-                  child: OutlinedButton(
-                      onPressed: () => _step(-1),
-                      child: const Text('‹ Prev'))),
               IconButton(
-                  onPressed: () => setState(
-                      () => _size = (_size - 2).clamp(15, 26).toDouble()),
-                  icon: const Text('A−',
-                      style: TextStyle(fontWeight: FontWeight.w800))),
-              IconButton(
-                  onPressed: () => setState(
-                      () => _size = (_size + 2).clamp(15, 26).toDouble()),
-                  icon: const Text('A+',
-                      style: TextStyle(fontWeight: FontWeight.w800))),
+                  tooltip: 'Previous hymn',
+                  onPressed: () => _step(-1),
+                  icon: const Icon(Icons.chevron_left)),
               Expanded(
-                  child: OutlinedButton(
-                      onPressed: () => _step(1),
-                      child: const Text('Next ›'))),
+                child: Slider(
+                  value: _size,
+                  min: 15,
+                  max: 26,
+                  divisions: 11,
+                  label: 'Text ${_size.round()}',
+                  onChanged: (v) => setState(() => _size = v),
+                ),
+              ),
+              IconButton(
+                  tooltip: 'Next hymn',
+                  onPressed: () => _step(1),
+                  icon: const Icon(Icons.chevron_right)),
             ],
           ),
         ),
@@ -1006,31 +938,25 @@ class _ReaderState extends State<ReaderScreen> {
   }
 
   Widget _verse(String label, String text, bool refrain) {
-    return Container(
+    return Card(
+      color: refrain ? kCream : null,
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: refrain ? const Color(0xFFF7F3E6) : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: kLine),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label,
-              style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1,
-                  color: kNavy)),
-          const SizedBox(height: 6),
-          Text(text,
-              style: TextStyle(
-                  fontSize: _size,
-                  height: 1.8,
-                  fontStyle:
-                      refrain ? FontStyle.italic : FontStyle.normal)),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: Theme.of(context).textTheme.labelLarge),
+            const SizedBox(height: 6),
+            SelectableText(text,
+                style: TextStyle(
+                    fontSize: _size,
+                    height: 1.8,
+                    fontStyle: refrain
+                        ? FontStyle.italic
+                        : FontStyle.normal)),
+          ],
+        ),
       ),
     );
   }
@@ -1041,80 +967,50 @@ class FamilyScreen extends StatelessWidget {
   const FamilyScreen({super.key});
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(14, 14, 14, 0),
-          child: ClipRRect(
-            borderRadius: BorderRadius.all(Radius.circular(20)),
-            child: SizedBox.shrink(),
-          ),
-        ),
-        const Eyebrow('LIFE AT KNL'),
-        _Card(
-          child: Image.asset('assets/youth.webp',
-              errorBuilder: (_, __, ___) =>
-                  const SizedBox(height: 120, child: Center(child: Text('🤝')))),
-        ),
-        const Eyebrow('PROGRAMS'),
-        _Card(
-          child: Column(
-            children: const [
-              _MRow('📖', 'Bible Study', 'Grow in the Word week by week'),
-              _MRow('🎶', 'Sing & Praise', 'Choir and worship music'),
-              _MRow('🌍', 'Community Outreach', 'Serving Kisii town'),
-              _MRow('🌿', 'Nature Fellowships', 'Worship outdoors together'),
-            ],
-          ),
-        ),
-        const Eyebrow('MINISTRIES • TEAM KNL'),
-        _Card(
-          child: Column(
-            children: const [
-              _MRow('🧒', 'Children',
-                  'Nurturing young hearts to follow Jesus'),
-              _MRow('🔥', 'Youths', 'Empowering young leaders'),
-              _MRow('👫', 'ALO & AMO',
-                  'Men & women championing God\'s purpose'),
-            ],
-          ),
-        ),
-        const SizedBox(height: 24),
-      ],
-    );
-  }
-}
-
-class _MRow extends StatelessWidget {
-  final String ic;
-  final String title;
-  final String sub;
-  const _MRow(this.ic, this.title, this.sub);
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
+    return Scaffold(
+      appBar: AppBar(title: const Text('Family')),
+      body: ListView(
+        padding: const EdgeInsets.all(14),
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-                color: const Color(0xFFF3E6B8),
-                borderRadius: BorderRadius.circular(12)),
-            child: Text(ic, style: const TextStyle(fontSize: 22)),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Image.asset('assets/youth.webp',
+                errorBuilder: (_, __, ___) => const SizedBox(
+                    height: 120,
+                    child: Center(
+                        child: Icon(Icons.group, size: 48)))),
           ),
-          const SizedBox(width: 12),
-          Expanded(
+          const SizedBox(height: 14),
+          Text('PROGRAMS',
+              style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: 8),
+          const Card(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style: const TextStyle(fontWeight: FontWeight.w800)),
-                Text(sub,
-                    style:
-                        const TextStyle(fontSize: 13, color: kMuted)),
+                _MRow(Icons.menu_book_outlined, 'Bible Study',
+                    'Grow in the Word week by week'),
+                _MRow(Icons.music_note_outlined, 'Sing & Praise',
+                    'Choir and worship music'),
+                _MRow(Icons.public_outlined, 'Community Outreach',
+                    'Serving Kisii town'),
+                _MRow(Icons.park_outlined, 'Nature Fellowships',
+                    'Worship outdoors together'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text('MINISTRIES • TEAM KNL',
+              style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: 8),
+          const Card(
+            child: Column(
+              children: [
+                _MRow(Icons.child_care_outlined, 'Children',
+                    'Nurturing young hearts to follow Jesus'),
+                _MRow(Icons.local_fire_department_outlined, 'Youths',
+                    'Empowering young leaders'),
+                _MRow(Icons.people_outline, 'ALO & AMO',
+                    'Men & women championing God\'s purpose'),
               ],
             ),
           ),
@@ -1124,76 +1020,137 @@ class _MRow extends StatelessWidget {
   }
 }
 
+class _MRow extends StatelessWidget {
+  final IconData ic;
+  final String title;
+  final String sub;
+  const _MRow(this.ic, this.title, this.sub);
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: CircleAvatar(
+          backgroundColor: kCream, child: Icon(ic, color: kNavy)),
+      title:
+          Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+      subtitle: Text(sub),
+    );
+  }
+}
+
 // ---------- VISIT ----------
 class VisitScreen extends StatelessWidget {
   const VisitScreen({super.key});
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      children: [
-        const Eyebrow('PLAN YOUR VISIT'),
-        const _Card(child: _SvcRows()),
-        const Eyebrow('FIND US'),
-        _Card(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                  'Plus code: 8QH8+FP8\nBehind Quickmart, Kisii town\nP.O Box 3970, 40200, Kisii, Kenya\nPhone: 0737 428 240',
-                  style: TextStyle(height: 1.6)),
-              const SizedBox(height: 10),
-              BigButton(
-                  label: '🗺️ Get directions',
-                  bg: kGold,
-                  fg: const Color(0xFF231A00),
-                  onTap: () => openLink(mapsQuery)),
-              const SizedBox(height: 8),
-              BigButton(
-                  label: '🧭 OSM directions',
-                  bg: kNavy,
-                  fg: Colors.white,
-                  onTap: () => openLink(osmDirs)),
-            ],
-          ),
-        ),
-        const Eyebrow('CONTACT'),
-        _Card(
-          child: Column(
-            children: [
-              BigButton(
-                  label: '📞 Call 0737 428 240',
-                  bg: kNavy,
-                  fg: Colors.white,
-                  onTap: () => openLink(telChurch)),
-              const SizedBox(height: 8),
-              BigButton(
-                  label: '💬 WhatsApp the church',
-                  bg: const Color(0xFF1FA855),
-                  fg: Colors.white,
-                  onTap: () => openLink(waChurch)),
-              const SizedBox(height: 8),
-              BigButton(
-                  label: '✉️ Send SMS',
-                  bg: kCard,
-                  fg: kNavy,
-                  onTap: () => openLink(smsChurch)),
-              const SizedBox(height: 10),
-              InkWell(
-                onTap: () => openLink(siteUrl),
-                child: const Text('Visit knlsda.org 🌐',
-                    style: TextStyle(
-                        color: kNavy2,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16)),
+    return Scaffold(
+      appBar: AppBar(title: const Text('Visit')),
+      body: ListView(
+        padding: const EdgeInsets.all(14),
+        children: [
+          Text('PLAN YOUR VISIT',
+              style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: 8),
+          const Card(child: _SvcRows()),
+          const SizedBox(height: 14),
+          Text('FIND US', style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: 8),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SelectableText(
+                      'Plus code: 8QH8+FP8\nBehind Quickmart, Kisii town\nP.O Box 3970, 40200, Kisii, Kenya\nPhone: 0737 428 240',
+                      style: TextStyle(height: 1.6)),
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                      onPressed: () => openLink(mapsQuery),
+                      icon: const Icon(Icons.map),
+                      label: const Text('Get directions'),
+                      style: FilledButton.styleFrom(
+                          backgroundColor: kGold,
+                          foregroundColor: const Color(0xFF231A00),
+                          minimumSize:
+                              const Size(double.infinity, 52))),
+                  const SizedBox(height: 8),
+                  FilledButton.tonalIcon(
+                      onPressed: () => openLink(osmDirs),
+                      icon: const Icon(Icons.explore),
+                      label: const Text('OSM directions')),
+                ],
               ),
-              const SizedBox(height: 8),
-              Text('KNL Church • v$appVersion',
-                  style: const TextStyle(fontSize: 12, color: kMuted)),
-            ],
+            ),
           ),
-        ),
-        const SizedBox(height: 24),
-      ],
+          const SizedBox(height: 14),
+          Text('CONTACT', style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: 8),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  FilledButton.icon(
+                      onPressed: () => openLink(telChurch),
+                      icon: const Icon(Icons.call),
+                      label: const Text('Call 0737 428 240')),
+                  const SizedBox(height: 8),
+                  FilledButton.icon(
+                      onPressed: () => openLink(waChurch),
+                      icon: const Icon(Icons.chat),
+                      label: const Text('WhatsApp the church'),
+                      style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF1FA855))),
+                  const SizedBox(height: 8),
+                  FilledButton.tonalIcon(
+                      onPressed: () => openLink(smsChurch),
+                      icon: const Icon(Icons.sms),
+                      label: const Text('Send SMS')),
+                  const SizedBox(height: 12),
+                  InkWell(
+                    onTap: () => openLink(siteUrl),
+                    child: Text('Visit knlsda.org 🌐',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(color: kNavy2)),
+                  ),
+                  const SizedBox(height: 6),
+                  Text('KNL Church • v$appVersion',
+                      style: Theme.of(context).textTheme.bodySmall),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SvcRows extends StatelessWidget {
+  const _SvcRows();
+  @override
+  Widget build(BuildContext context) {
+    const rows = [
+      ['Wednesday Prayers', 'Wed 5:30 PM', Icons.nights_stay_outlined],
+      ['Friday Vespers', 'Fri 5:30 PM', Icons.bedtime_outlined],
+      ['Sabbath Service', 'Sat 9:00 AM', Icons.church_outlined],
+    ];
+    return Column(
+      children: rows
+          .map((r) => ListTile(
+                leading: Icon(r[2] as IconData, color: kNavy),
+                title: Text(r[0] as String,
+                    style:
+                        const TextStyle(fontWeight: FontWeight.w700)),
+                trailing: Text(r[1] as String,
+                    style: const TextStyle(
+                        color: kNavy,
+                        fontWeight: FontWeight.w800,
+                        fontFeatures: [FontFeature.tabularFigures()])),
+              ))
+          .toList(),
     );
   }
 }
@@ -1285,7 +1242,8 @@ class _SupportState extends State<SupportScreen> {
         });
       } else {
         setState(() {
-          _msg = '⚠ ${d['message'] ?? 'Prompt failed — please try again.'}';
+          _msg =
+              '⚠ ${d['message'] ?? 'Prompt failed — please try again.'}';
           _msgColor = const Color(0xFFFFB4A8);
         });
       }
@@ -1302,256 +1260,252 @@ class _SupportState extends State<SupportScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(14),
-      children: [
-        Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
+    return Scaffold(
+      appBar: AppBar(title: const Text('Support')),
+      body: ListView(
+        padding: const EdgeInsets.all(14),
+        children: [
+          Card.filled(
             color: kNight,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: kGold.withValues(alpha: 0.5)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  border: Border.all(color: kGold, width: 1.5),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: const Text(
-                    'NOT a church tithe — tithes live under Give',
-                    style: TextStyle(
-                        color: kGold,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800)),
-              ),
-              const SizedBox(height: 10),
-              const Text('Keep this app running & improving',
-                  style: TextStyle(
-                      color: kGold,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w900)),
-              const Text(
-                  'Your gift pays for the server, the offline hymnal and fresh content. An M-Pesa prompt lands straight on the phone.',
-                  style: TextStyle(
-                      color: Colors.white, fontSize: 14, height: 1.6)),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (var i = 0; i < _amounts.length; i++)
-                    ChoiceChip(
-                      label: Text('${_amounts[i]}',
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w900)),
-                      selected: _chip == i,
-                      onSelected: (_) => setState(() {
-                        _chip = i;
-                        _amt.text = '${_amounts[i]}';
-                      }),
-                      selectedColor: kGold,
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: kGold, width: 1.5),
+                      borderRadius: BorderRadius.circular(999),
                     ),
-                  ChoiceChip(
-                    label: const Text('Other',
-                        style: TextStyle(fontWeight: FontWeight.w700)),
-                    selected: _chip == 99,
-                    onSelected: (_) => setState(() {
-                      _chip = 99;
-                      _amt.clear();
-                    }),
-                    selectedColor: kGold,
+                    child: const Text(
+                        'NOT a church tithe — tithes live under Give',
+                        style: TextStyle(
+                            color: kGold,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800)),
                   ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              const Text('M-Pesa phone for prompt',
-                  style: TextStyle(
-                      color: kGold, fontWeight: FontWeight.w700)),
-              TextField(
-                controller: _phone,
-                keyboardType: TextInputType.phone,
-                style: const TextStyle(color: Colors.black),
-                decoration: const InputDecoration(
-                  hintText: '07… / 254…',
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 14),
-                ),
-              ),
-              const SizedBox(height: 10),
-              const Text('Amount (KSh, min 10)',
-                  style: TextStyle(
-                      color: kGold, fontWeight: FontWeight.w700)),
-              TextField(
-                controller: _amt,
-                keyboardType: TextInputType.number,
-                style: const TextStyle(color: Colors.black),
-                decoration: const InputDecoration(
-                  hintText: 'Tap an amount above or type',
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 14),
-                ),
-                onChanged: (_) => setState(() => _chip = -1),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _sending ? null : _send,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: kGold,
-                    foregroundColor: const Color(0xFF231A00),
-                    minimumSize: const Size(0, 56),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
-                  ),
-                  child: _sending
-                      ? const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 3)),
-                            SizedBox(width: 10),
-                            Text('Sending…',
-                                style: TextStyle(
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 17)),
-                          ],
-                        )
-                      : const Text('Send M-Pesa Prompt',
-                          style: TextStyle(
-                              fontWeight: FontWeight.w900, fontSize: 17)),
-                ),
-              ),
-              if (_msg.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 10),
-                  child: Text(_msg,
-                      style: TextStyle(color: _msgColor, fontSize: 14)),
-                ),
-              if (_receipt != null)
-                Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.only(top: 12),
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    border:
-                        Border.all(color: kGold, style: BorderStyle.solid),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Column(
+                  const SizedBox(height: 10),
+                  const Text('Keep this app running & improving',
+                      style: TextStyle(
+                          color: kGold,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w900)),
+                  const Text(
+                      'Your gift pays for the server, the offline hymnal and fresh content. An M-Pesa prompt lands straight on the phone.',
+                      style: TextStyle(
+                          color: Colors.white, fontSize: 14, height: 1.6)),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
-                      const Text('✓ PROMPT SENT',
-                          style: TextStyle(
-                              color: kGold,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 13)),
-                      Text('KSh ${_receipt!['amt']}',
-                          style: const TextStyle(
-                              color: Color(0xFF8CE76A),
-                              fontSize: 28,
-                              fontWeight: FontWeight.w900)),
-                      Text(
-                          'Enter your M-Pesa PIN on ${_phone.text} to finish.',
-                          style: const TextStyle(color: Colors.white)),
-                      Text(
-                          '${_receipt!['id']} • ${_receipt!['when']}',
-                          style: const TextStyle(
-                              color: Colors.white70, fontSize: 11)),
+                      for (var i = 0; i < _amounts.length; i++)
+                        ChoiceChip(
+                          label: Text('${_amounts[i]}',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w900)),
+                          selected: _chip == i,
+                          onSelected: (_) => setState(() {
+                            _chip = i;
+                            _amt.text = '${_amounts[i]}';
+                          }),
+                        ),
+                      ChoiceChip(
+                        label: const Text('Other',
+                            style:
+                                TextStyle(fontWeight: FontWeight.w700)),
+                        selected: _chip == 99,
+                        onSelected: (_) => setState(() {
+                          _chip = 99;
+                          _amt.clear();
+                        }),
+                      ),
                     ],
                   ),
-                ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
-        const Text('WHY GIVE HERE',
-            style: TextStyle(
-                fontSize: 12,
-                letterSpacing: 1.2,
-                fontWeight: FontWeight.w800,
-                color: kMuted)),
-        const _Card(
-            child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('🖥️ Server & hosting that delivers every STK prompt',
-                style: TextStyle(height: 2)),
-            Text('🎵 Offline hymnal — all 695 songs, no data needed',
-                style: TextStyle(height: 2)),
-            Text('📢 Fresh announcements & sermon updates',
-                style: TextStyle(height: 2)),
-          ],
-        )),
-        const SizedBox(height: 12),
-        const Text('TALK TO THE DEVELOPER',
-            style: TextStyle(
-                fontSize: 12,
-                letterSpacing: 1.2,
-                fontWeight: FontWeight.w800,
-                color: kMuted)),
-        _Card(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                  'Bug? Idea? Opens straight into the developer\'s WhatsApp.'),
-              const SizedBox(height: 8),
-              BigButton(
-                  label: '💬 WhatsApp feedback',
-                  bg: const Color(0xFF1FA855),
-                  fg: Colors.white,
-                  onTap: () => openLink(waDev)),
-            ],
-          ),
-        ),
-        if (_hist.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          const Text('YOUR RECENT SUPPORT • THIS PHONE ONLY',
-              style: TextStyle(
-                  fontSize: 12,
-                  letterSpacing: 1.2,
-                  fontWeight: FontWeight.w800,
-                  color: kMuted)),
-          _Card(
-            child: Column(
-              children: _hist
-                  .map((x) => Padding(
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 6),
-                        child: Row(
-                          mainAxisAlignment:
-                              MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text('♥ KSh ${x['a']}',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w700)),
-                            Text('${x['d']}',
-                                style: const TextStyle(
-                                    color: kNavy,
-                                    fontWeight: FontWeight.w800)),
-                          ],
-                        ),
-                      ))
-                  .toList(),
+                  const SizedBox(height: 12),
+                  const Text('M-Pesa phone for prompt',
+                      style: TextStyle(
+                          color: kGold, fontWeight: FontWeight.w700)),
+                  TextField(
+                    controller: _phone,
+                    keyboardType: TextInputType.phone,
+                    style: const TextStyle(color: Colors.black),
+                    decoration: const InputDecoration(
+                      hintText: '07… / 254…',
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 14),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text('Amount (KSh, min 10)',
+                      style: TextStyle(
+                          color: kGold, fontWeight: FontWeight.w700)),
+                  TextField(
+                    controller: _amt,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(color: Colors.black),
+                    decoration: const InputDecoration(
+                      hintText: 'Tap an amount above or type',
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 14),
+                    ),
+                    onChanged: (_) => setState(() => _chip = -1),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: _sending ? null : _send,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: kGold,
+                        foregroundColor: const Color(0xFF231A00),
+                        minimumSize: const Size(0, 56),
+                      ),
+                      child: _sending
+                          ? const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 3)),
+                                SizedBox(width: 10),
+                                Text('Sending…',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 17)),
+                              ],
+                            )
+                          : const Text('Send M-Pesa Prompt',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 17)),
+                    ),
+                  ),
+                  if (_msg.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: Text(_msg,
+                          style:
+                              TextStyle(color: _msgColor, fontSize: 14)),
+                    ),
+                  if (_receipt != null)
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(top: 12),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: kGold),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Column(
+                        children: [
+                          const Text('✓ PROMPT SENT',
+                              style: TextStyle(
+                                  color: kGold,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 13)),
+                          Text('KSh ${_receipt!['amt']}',
+                              style: const TextStyle(
+                                  color: Color(0xFF8CE76A),
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.w900)),
+                          Text(
+                              'Enter your M-Pesa PIN on ${_phone.text} to finish.',
+                              style:
+                                  const TextStyle(color: Colors.white)),
+                          Text(
+                              '${_receipt!['id']} • ${_receipt!['when']}',
+                              style: const TextStyle(
+                                  color: Colors.white70, fontSize: 11)),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
+          const SizedBox(height: 14),
+          Text('WHY GIVE HERE',
+              style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: 8),
+          const Card(
+              child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ListTile(
+                  leading: Icon(Icons.dns_outlined, color: kNavy),
+                  title: Text(
+                      'Server & hosting that delivers every STK prompt')),
+              ListTile(
+                  leading: Icon(Icons.music_note_outlined, color: kNavy),
+                  title: Text(
+                      'Offline hymnal — all 695 songs, no data needed')),
+              ListTile(
+                  leading:
+                      Icon(Icons.campaign_outlined, color: kNavy),
+                  title: Text('Fresh announcements & sermon updates')),
+            ],
+          )),
+          const SizedBox(height: 14),
+          Text('TALK TO THE DEVELOPER',
+              style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: 8),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                      'Bug? Idea? Opens straight into the developer\'s WhatsApp.'),
+                  const SizedBox(height: 8),
+                  FilledButton.icon(
+                      onPressed: () => openLink(waDev),
+                      icon: const Icon(Icons.chat),
+                      label: const Text('WhatsApp feedback'),
+                      style: FilledButton.styleFrom(
+                          backgroundColor:
+                              const Color(0xFF1FA855))),
+                ],
+              ),
+            ),
+          ),
+          if (_hist.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Text('YOUR RECENT SUPPORT • THIS PHONE ONLY',
+                style: Theme.of(context).textTheme.labelLarge),
+            const SizedBox(height: 8),
+            Card(
+              child: Column(
+                children: _hist
+                    .map((x) => ListTile(
+                          leading: const Icon(Icons.favorite,
+                              color: kGold),
+                          title: Text('KSh ${x['a']}',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w700)),
+                          trailing: Text('${x['d']}',
+                              style: const TextStyle(
+                                  color: kNavy,
+                                  fontWeight: FontWeight.w800)),
+                        ))
+                    .toList(),
+              ),
+            ),
+          ],
+          const SizedBox(height: 24),
         ],
-        const SizedBox(height: 24),
-      ],
+      ),
     );
   }
 }
