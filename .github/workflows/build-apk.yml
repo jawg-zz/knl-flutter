@@ -71,12 +71,17 @@ jobs:
           APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | head -1)
           APK=/tmp/tmpl/build/app/outputs/flutter-apk/app-release.apk
           zip -d "$APK" 'META-INF/*' > /dev/null
+          "$JAVA_HOME/bin/jarsigner" -keystore /tmp/knl.jks \
+            -storepass "$KEYSTORE_PASSWORD" -keypass "$KEY_PASSWORD" \
+            -digestalg SHA-256 -sigalg SHA256withRSA \
+            -signedjar /tmp/tmpl/knl-v1.apk "$APK" "$KEY_ALIAS"
           "$APKSIGNER" sign --ks /tmp/knl.jks \
             --ks-pass env:KEYSTORE_PASSWORD --key-pass env:KEY_PASSWORD \
-            --ks-key-alias "$KEY_ALIAS" --v1-signing-enabled true \
-            --v2-signing-enabled true --out /tmp/tmpl/knl-flutter-release.apk "$APK"
+            --ks-key-alias "$KEY_ALIAS" --v1-signing-enabled false \
+            --v2-signing-enabled true --out /tmp/tmpl/knl-flutter-release.apk /tmp/tmpl/knl-v1.apk
           "$APKSIGNER" verify --print-certs /tmp/tmpl/knl-flutter-release.apk | head -2
-          rm -f /tmp/knl.jks
+          "$APKSIGNER" verify -v /tmp/tmpl/knl-flutter-release.apk | grep -i "scheme" | head -4
+          rm -f /tmp/knl.jks /tmp/tmpl/knl-v1.apk
 
       - uses: actions/upload-artifact@v4
         with:
